@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "../node_modules/@zetachain/protocol-contracts/contracts/zevm/SystemContract.sol";
+import "../node_modules/@zetachain/protocol-contracts/contracts/zevm/interfaces/zContract.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IERC20.sol";
+
+contract ZetaLend is zContract, Pausable, Ownable {
+    SystemContract public immutable systemContract;
+    uint256 public constant MAX_LTV = 75; // 75% max LTV ratio
+    uint256 public constant LIQUIDATION_THRESHOLD = 80; // 80% liquidation threshold
+
+    struct Loan {
+        uint256 collateralAmount;
+        uint256 borrowedAmount;
+        address collateralToken;
+        address borrowedToken;
+        uint256 timestamp;
+        bool active;
+    }
+
+    mapping(address => Loan[]) public loans;
+    mapping(address => bool) public supportedTokens;
+    
+    event Deposit(address indexed user, address token, uint256 amount);
+    event Borrow(address indexed user, address token, uint256 amount);
+    event Repay(address indexed user, address token, uint256 amount);
+    event Withdraw(address indexed user, address token, uint256 amount);
+    event TokenAdded(address token);
+    event TokenRemoved(address token);
+
+    constructor(address systemContractAddress) {
+        systemContract = SystemContract(systemContractAddress);
+    }
+
+    function onCrossChainCall(
+        zContext calldata context,
+        address zrc20,
+        uint256 amount,
+        bytes calldata message
+    ) external virtual override whenNotPaused {
+        require(msg.sender == address(systemContract), "ZetaLend: only system contract");
+        
+        // Decode message to determine action (deposit/borrow)
+        (bytes1 action, address recipient) = abi.decode(message, (bytes1, address));
+        
+        if (action == 0x01) { // Deposit
+            _handleDeposit(context.origin, zrc20, amount);
+        } else if (action == 0x02) { // Borrow
+            _handleBorrow(recipient, zrc20, amount);
+        }
+    }
+
+    function _handleDeposit(address user, address token, uint256 amount) internal {
+        require(supportedTokens[token], "ZetaLend: token not supported");
+        
+        Loan memory newLoan = Loan({
+            collateralAmount: amount,
+            borrowedAmount: 0,
+            collateralToken: token,
+            borrowedToken: address(0),
+            timestamp: block.timestamp,
+            active: true
+        });
+        
+        loans[user].push(newLoan);
+        emit Deposit(user, token, amount);
+    }
+
+    function _handleBorrow(address recipient, address token, uint256 amount) internal {
+        require(supportedTokens[token], "ZetaLend: token not supported");
+        require(IERC20(token).transfer(recipient, amount), "ZetaLend: transfer failed");
+        
+        Loan storage loan = loans[recipient][loans[recipient].length - 1];
+        loan.borrowedAmount = amount;
+        loan.borrowedToken = token;
+        
+        emit Borrow(recipient, token, amount);
+    }
+
+    function calculateLTV(Loan memory loan) public pure returns (uint256) {
+        if (loan.collateralAmount == 0) return 0;
+        return (loan.borrowedAmount * 100) / loan.collateralAmount;
+    }
+
+    function addSupportedToken(address token) external onlyOwner {
+        supportedTokens[token] = true;
+        emit TokenAdded(token);
+    }
+
+    function removeSupportedToken(address token) external onlyOwner {
+        supportedTokens[token] = false;
+        emit TokenRemoved(token);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    // Emergency withdrawal function
+    function emergencyWithdraw(address token) external onlyOwner {
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(IERC20(token).transfer(owner(), balance), "ZetaLend: transfer failed");
+    }
+}
