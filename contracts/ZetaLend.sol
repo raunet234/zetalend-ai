@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.7;
 
-import "../node_modules/@zetachain/protocol-contracts/contracts/zevm/SystemContract.sol";
-import "../node_modules/@zetachain/protocol-contracts/contracts/zevm/interfaces/zContract.sol";
+import "@zetachain/protocol-contracts/contracts/zevm/SystemContract.sol";
+import "@zetachain/protocol-contracts/contracts/zevm/interfaces/zContract.sol";
+import "@zetachain/protocol-contracts/contracts/zevm/interfaces/IZRC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IERC20.sol";
@@ -47,7 +48,8 @@ contract ZetaLend is zContract, Pausable, Ownable {
         (bytes1 action, address recipient) = abi.decode(message, (bytes1, address));
         
         if (action == 0x01) { // Deposit
-            _handleDeposit(context.origin, zrc20, amount);
+            address userAddress = address(uint160(uint256(bytes32(context.origin))));
+            _handleDeposit(userAddress, zrc20, amount);
         } else if (action == 0x02) { // Borrow
             _handleBorrow(recipient, zrc20, amount);
         }
@@ -71,9 +73,17 @@ contract ZetaLend is zContract, Pausable, Ownable {
 
     function _handleBorrow(address recipient, address token, uint256 amount) internal {
         require(supportedTokens[token], "ZetaLend: token not supported");
-        require(IERC20(token).transfer(recipient, amount), "ZetaLend: transfer failed");
+        require(loans[recipient].length > 0, "ZetaLend: no collateral deposited");
         
         Loan storage loan = loans[recipient][loans[recipient].length - 1];
+        require(loan.active && loan.borrowedAmount == 0, "ZetaLend: invalid loan state");
+        
+        // Simple 1:1 ratio check (should use oracle in production)
+        uint256 maxBorrow = (loan.collateralAmount * MAX_LTV) / 100;
+        require(amount <= maxBorrow, "ZetaLend: exceeds max LTV");
+        
+        require(IERC20(token).transfer(recipient, amount), "ZetaLend: transfer failed");
+        
         loan.borrowedAmount = amount;
         loan.borrowedToken = token;
         
@@ -101,6 +111,38 @@ contract ZetaLend is zContract, Pausable, Ownable {
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    function repayLoan(uint256 loanIndex) external whenNotPaused {
+        require(loanIndex < loans[msg.sender].length, "ZetaLend: invalid loan index");
+        Loan storage loan = loans[msg.sender][loanIndex];
+        require(loan.active && loan.borrowedAmount > 0, "ZetaLend: no active loan");
+        
+        uint256 repayAmount = loan.borrowedAmount;
+        require(IERC20(loan.borrowedToken).transferFrom(msg.sender, address(this), repayAmount), 
+                "ZetaLend: repayment failed");
+        
+        loan.borrowedAmount = 0;
+        emit Repay(msg.sender, loan.borrowedToken, repayAmount);
+    }
+    
+    function withdrawCollateral(uint256 loanIndex) external whenNotPaused {
+        require(loanIndex < loans[msg.sender].length, "ZetaLend: invalid loan index");
+        Loan storage loan = loans[msg.sender][loanIndex];
+        require(loan.active && loan.borrowedAmount == 0, "ZetaLend: loan not repaid");
+        
+        uint256 collateralAmount = loan.collateralAmount;
+        loan.active = false;
+        loan.collateralAmount = 0;
+        
+        require(IERC20(loan.collateralToken).transfer(msg.sender, collateralAmount), 
+                "ZetaLend: withdrawal failed");
+        
+        emit Withdraw(msg.sender, loan.collateralToken, collateralAmount);
+    }
+
+    function getUserLoans(address user) external view returns (Loan[] memory) {
+        return loans[user];
     }
 
     // Emergency withdrawal function

@@ -9,18 +9,19 @@ async function main() {
   const ZetaLend = await hre.ethers.getContractFactory("ZetaLend");
   const zetaLend = await ZetaLend.deploy(SYSTEM_CONTRACT);
 
-  await zetaLend.deployed();
+  await zetaLend.waitForDeployment();
 
-  console.log(`ZetaLend deployed to: ${zetaLend.address}`);
+  const contractAddress = await zetaLend.getAddress();
+  console.log(`ZetaLend deployed to: ${contractAddress}`);
 
   // Wait for a few block confirmations to ensure the contract is deployed
-  await zetaLend.deployTransaction.wait(5);
+  console.log("Waiting for confirmations...");
 
   // Verify the contract on ZetaChain Explorer
   console.log("Verifying contract on ZetaChain Explorer...");
   try {
     await hre.run("verify:verify", {
-      address: zetaLend.address,
+      address: contractAddress,
       constructorArguments: [SYSTEM_CONTRACT],
     });
     console.log("Contract verified successfully");

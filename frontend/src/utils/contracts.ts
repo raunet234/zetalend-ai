@@ -1,4 +1,4 @@
-export const ZETALEND_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`; // Replace with your deployed contract address
+export const ZETALEND_ADDRESS = "0xF2A810acA5a5574D1a788D5905195b5Af729eA30" as `0x${string}`; // Your deployed contract address
 
 export const ZETALEND_ABI = [
   // Deposit function
