@@ -54,12 +54,12 @@ export default function LendingInterface() {
 
   return (
     <div className="card space-y-6">
-      <h2 className="text-xl font-semibold">Lending Interface</h2>
+      <h2 className="text-xl font-semibold">{typeof window !== 'undefined' ? 'Lending Interface' : 'Loading...'}</h2>
       
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Deposit {depositToken.symbol} (on Ethereum)
+            Deposit {depositToken?.symbol} (on Ethereum)
           </label>
           <div className="flex space-x-2">
             <input
@@ -82,7 +82,7 @@ export default function LendingInterface() {
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Borrow {borrowToken.symbol} (on BSC)
+            Borrow {borrowToken?.symbol} (on BSC)
           </label>
           <div className="flex space-x-2">
             <input
