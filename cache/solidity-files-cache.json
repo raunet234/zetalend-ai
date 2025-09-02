@@ -38,8 +38,8 @@
       ]
     },
     "D:\\dorahack-project\\zetalend-ai\\contracts\\ZetaLend.sol": {
-      "lastModificationDate": 1756034312346,
-      "contentHash": "4ba6d4ec5406366f7bf6965de5fe4280",
+      "lastModificationDate": 1756814588214,
+      "contentHash": "7ec10b38875ce7b1cf699070f24981c6",
       "sourceName": "contracts/ZetaLend.sol",
       "solcConfig": {
         "version": "0.8.7",

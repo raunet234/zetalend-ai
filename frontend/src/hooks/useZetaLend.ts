@@ -30,12 +30,12 @@ export const useZetaLend = () => {
   });
 
   const depositToken = {
-    symbol: 'ETH',
+    symbol: 'ZETA',
     decimals: 18,
   };
 
   const borrowToken = {
-    symbol: 'USDT',
+    symbol: 'TestUSDT',
     decimals: 6,
   };
 
@@ -46,9 +46,9 @@ export const useZetaLend = () => {
     try {
       setIsLoading(true);
 
-      // Switch to Ethereum network if needed
-      if (chain.id !== SUPPORTED_CHAINS.ethereum) {
-        await switchNetwork?.(SUPPORTED_CHAINS.ethereum);
+      // Switch to ZetaChain Athens testnet
+      if (chain.id !== SUPPORTED_CHAINS.zetachainAthens) {
+        await switchNetwork?.(SUPPORTED_CHAINS.zetachainAthens);
       }
 
       // Convert amount to Wei
@@ -78,9 +78,9 @@ export const useZetaLend = () => {
     try {
       setIsLoading(true);
 
-      // Switch to BSC network if needed
-      if (chain.id !== SUPPORTED_CHAINS.bsc) {
-        await switchNetwork?.(SUPPORTED_CHAINS.bsc);
+      // Switch to BSC Testnet instead of mainnet
+      if (chain.id !== SUPPORTED_CHAINS.bscTestnet) {
+        await switchNetwork?.(SUPPORTED_CHAINS.bscTestnet);
       }
 
       // Convert amount to smallest unit (USDT uses 6 decimals)

@@ -34,11 +34,11 @@ contract ZetaLend is zContract, Pausable, Ownable {
 
     constructor(address systemContractAddress) {
         systemContract = SystemContract(systemContractAddress);
-        // Add native ETH (represented as address(0) in our system) as supported token
+        // Add ETH (represented as address(0) in our system) as supported token
         supportedTokens[address(0)] = true;
     }
-    
-    // Add direct deposit function for ETH
+
+    // Add a direct deposit function for ETH
     function deposit() external payable whenNotPaused {
         require(msg.value > 0, "ZetaLend: deposit amount must be greater than 0");
         

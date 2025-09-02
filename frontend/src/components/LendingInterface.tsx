@@ -73,10 +73,19 @@ export default function LendingInterface() {
     <div className="card space-y-6">
       <h2 className="text-xl font-semibold">Lending Interface</h2>
       
+      <div className="bg-blue-900/30 border border-blue-800 rounded-md p-3 text-sm text-blue-200 mb-4">
+        <p className="font-medium mb-1">📌 Testnet Mode</p>
+        <p>You need testnet tokens to test this interface:</p>
+        <ul className="list-disc pl-5 mt-1">
+          <li>Get ZetaChain Athens testnet ZETA from <a href="https://labs.zetachain.com/get-zeta" target="_blank" rel="noopener noreferrer" className="underline">labs.zetachain.com/get-zeta</a></li>
+          <li>Get BSC Testnet BNB from <a href="https://testnet.bnbchain.org/faucet-smart" target="_blank" rel="noopener noreferrer" className="underline">BNB Testnet Faucet</a></li>
+        </ul>
+      </div>
+      
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Deposit {depositToken.symbol} (on Ethereum)
+            Deposit {depositToken.symbol} (on ZetaChain Athens Testnet)
           </label>
           <div className="flex space-x-2">
             <input
@@ -99,7 +108,7 @@ export default function LendingInterface() {
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Borrow {borrowToken.symbol} (on BSC)
+            Borrow {borrowToken.symbol} (on BSC Testnet)
           </label>
           <div className="flex space-x-2">
             <input

@@ -4,7 +4,7 @@ import React from 'react';
 import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
 import { configureChains, createConfig, WagmiConfig } from 'wagmi';
-import { mainnet, goerli, bsc, bscTestnet } from 'wagmi/chains';
+import { mainnet, sepolia, goerli, bsc, bscTestnet } from 'wagmi/chains';
 import { publicProvider } from 'wagmi/providers/public';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -27,8 +27,10 @@ const zetaChainTestnet = {
   },
 };
 
+// Using the built-in Sepolia chain from wagmi/chains
+
 const { chains, publicClient } = configureChains(
-  [zetaChainTestnet, mainnet, goerli, bsc, bscTestnet],
+  [zetaChainTestnet, mainnet, sepolia, goerli, bsc, bscTestnet],
   [publicProvider()]
 );
 
@@ -49,7 +51,7 @@ const queryClient = new QueryClient();
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiConfig config={wagmiConfig}>
-      <RainbowKitProvider chains={chains}>
+      <RainbowKitProvider chains={chains} initialChain={sepolia.id}>
         <QueryClientProvider client={queryClient}>
           {children}
         </QueryClientProvider>
