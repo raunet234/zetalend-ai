@@ -4,6 +4,10 @@ require('dotenv').config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
+  paths: {
+    sources: "./contracts",
+    artifacts: "./artifacts"
+  },
   solidity: {
     compilers: [
       {

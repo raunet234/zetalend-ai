@@ -1,4 +1,4 @@
-export const ZETALEND_ADDRESS = "0xE7535627Ca24d4859C58102a2A8cb3dc477B0E29" as `0x${string}`; // Your deployed contract address
+export const ZETALEND_ADDRESS = process.env.NEXT_PUBLIC_ZETALEND_CONTRACT as `0x${string}` || "0xE7535627Ca24d4859C58102a2A8cb3dc477B0E29"; // Your deployed contract address
 
 export const ZETALEND_ABI = [
   // Deposit function

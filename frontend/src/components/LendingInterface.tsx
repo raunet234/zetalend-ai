@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
@@ -15,8 +15,24 @@ export default function LendingInterface() {
     deposit,
     borrow,
     isLoading,
-    depositToken,
-    borrowToken,
+    
+    // Chain and token selection
+    depositChains,
+    selectedDepositChain,
+    setSelectedDepositChain,
+    selectedDepositToken,
+    setSelectedDepositToken,
+    availableDepositTokens,
+    
+    borrowChains,
+    selectedBorrowChain,
+    setSelectedBorrowChain,
+    selectedBorrowToken,
+    setSelectedBorrowToken,
+    availableBorrowTokens,
+    
+    getChainName,
+    SUPPORTED_TOKENS
   } = useZetaLend();
 
   // This effect runs only on the client after hydration is complete
@@ -74,19 +90,56 @@ export default function LendingInterface() {
       <h2 className="text-xl font-semibold">Lending Interface</h2>
       
       <div className="bg-blue-900/30 border border-blue-800 rounded-md p-3 text-sm text-blue-200 mb-4">
-        <p className="font-medium mb-1">📌 Testnet Mode</p>
+        <p className="font-medium mb-1">📌 Multi-Chain Testnet Mode</p>
         <p>You need testnet tokens to test this interface:</p>
         <ul className="list-disc pl-5 mt-1">
           <li>Get ZetaChain Athens testnet ZETA from <a href="https://labs.zetachain.com/get-zeta" target="_blank" rel="noopener noreferrer" className="underline">labs.zetachain.com/get-zeta</a></li>
           <li>Get BSC Testnet BNB from <a href="https://testnet.bnbchain.org/faucet-smart" target="_blank" rel="noopener noreferrer" className="underline">BNB Testnet Faucet</a></li>
+          <li>Get Mumbai MATIC from <a href="https://mumbaifaucet.com/" target="_blank" rel="noopener noreferrer" className="underline">Mumbai Faucet</a></li>
+          <li>Get Arbitrum Goerli ETH from <a href="https://goerlifaucet.com/" target="_blank" rel="noopener noreferrer" className="underline">Goerli Faucet</a></li>
+          <li>Get Avalanche Fuji AVAX from <a href="https://faucet.avax.network/" target="_blank" rel="noopener noreferrer" className="underline">Avalanche Faucet</a></li>
         </ul>
+        <p className="mt-2 text-xs italic">Note: Currently deposits are only supported on ZetaChain Athens testnet, while borrowing is available on multiple chains.</p>
       </div>
       
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Deposit {depositToken.symbol} (on ZetaChain Athens Testnet)
-          </label>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+            <label className="block text-sm font-medium text-gray-300">
+              Deposit on
+            </label>
+            <div className="flex gap-2">
+              <select 
+                className="select select-sm select-bordered bg-gray-800 text-gray-200 border-gray-600"
+                value={selectedDepositChain}
+                onChange={(e) => setSelectedDepositChain(Number(e.target.value))}
+                disabled={isLoading || depositChains.length <= 1}
+              >
+                {depositChains.map((chainId) => (
+                  <option key={chainId} value={chainId}>
+                    {getChainName(chainId)}
+                  </option>
+                ))}
+              </select>
+              
+              <select 
+                className="select select-sm select-bordered bg-gray-800 text-gray-200 border-gray-600"
+                value={selectedDepositToken?.symbol || ''}
+                onChange={(e) => {
+                  const token = availableDepositTokens.find(t => t.symbol === e.target.value);
+                  if (token) setSelectedDepositToken(token);
+                }}
+                disabled={isLoading || availableDepositTokens.length <= 1}
+              >
+                {availableDepositTokens.map((token) => (
+                  <option key={token.symbol} value={token.symbol}>
+                    {token.name || token.symbol}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
           <div className="flex space-x-2">
             <input
               type="number"
@@ -101,15 +154,48 @@ export default function LendingInterface() {
               onClick={handleDeposit}
               disabled={!depositAmount || isLoading}
             >
-              Deposit
+              Deposit {selectedDepositToken?.symbol || 'ZETA'}
             </button>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Borrow {borrowToken.symbol} (on BSC Testnet)
-          </label>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+            <label className="block text-sm font-medium text-gray-300">
+              Borrow on
+            </label>
+            <div className="flex gap-2">
+              <select 
+                className="select select-sm select-bordered bg-gray-800 text-gray-200 border-gray-600"
+                value={selectedBorrowChain}
+                onChange={(e) => setSelectedBorrowChain(Number(e.target.value))}
+                disabled={isLoading}
+              >
+                {borrowChains.map((chainId) => (
+                  <option key={chainId} value={chainId}>
+                    {getChainName(chainId)}
+                  </option>
+                ))}
+              </select>
+              
+              <select 
+                className="select select-sm select-bordered bg-gray-800 text-gray-200 border-gray-600"
+                value={selectedBorrowToken?.symbol || ''}
+                onChange={(e) => {
+                  const token = availableBorrowTokens.find(t => t.symbol === e.target.value);
+                  if (token) setSelectedBorrowToken(token);
+                }}
+                disabled={isLoading || availableBorrowTokens.length <= 1}
+              >
+                {availableBorrowTokens.map((token) => (
+                  <option key={token.symbol} value={token.symbol}>
+                    {token.name || token.symbol}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
           <div className="flex space-x-2">
             <input
               type="number"
@@ -124,9 +210,21 @@ export default function LendingInterface() {
               onClick={handleBorrow}
               disabled={!borrowAmount || isLoading}
             >
-              Borrow
+              Borrow {selectedBorrowToken?.symbol || 'Token'}
             </button>
           </div>
+        </div>
+        
+        {/* Add a feature list */}
+        <div className="mt-8 p-4 bg-gray-800/50 rounded-md border border-gray-700">
+          <h3 className="text-base font-medium mb-2">Features Coming Soon</h3>
+          <ul className="list-disc pl-5 text-sm text-gray-300 space-y-1">
+            <li>Cross-chain transfers via ZetaChain</li>
+            <li>Interest earning on deposits</li>
+            <li>Additional supported tokens and chains</li>
+            <li>Liquidation protection features</li>
+            <li>Analytics dashboard</li>
+          </ul>
         </div>
       </div>
     </div>
