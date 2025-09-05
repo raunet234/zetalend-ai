@@ -1,14 +1,17 @@
-# ZetaLend - Cross-Chain Lending Protocol
+# ZetaLend - AI-Powered Cross-Chain Lending Protocol
 
-ZetaLend is a decentralized cross-chain lending protocol built on ZetaChain, enabling users to seamlessly deposit and borrow assets across different blockchains.
+ZetaLend is a decentralized cross-chain lending protocol built on ZetaChain, enabling users to seamlessly deposit and borrow assets across different blockchains. Our protocol integrates advanced AI capabilities to offer personalized lending terms, enhanced risk management, and fraud detection.
 
 ## Features
 
 - 🌉 Cross-chain lending powered by ZetaChain
-- 💰 Deposit ETH on Ethereum, borrow USDT on BSC
+- 💰 Deposit ETH on Ethereum, borrow tokens on BSC, Polygon, and other chains
 - 🔐 Secure collateral management with 75% max LTV
 - 🎯 Real-time transaction tracking
 - 📱 Responsive, user-friendly interface
+- 🧠 AI-powered credit scoring (coming soon)
+- 🛡️ Fraud detection system (coming soon)
+- 📊 Advanced risk management (coming soon)
 
 ## Tech Stack
 
@@ -47,7 +50,66 @@ ZetaLend is a decentralized cross-chain lending protocol built on ZetaChain, ena
 2. Install dependencies:
    ```bash
    # Install root dependencies
-   yarn install
+   npm install
+   
+   # Install frontend dependencies
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+3. Set up environment variables:
+   ```bash
+   # Create .env file for smart contract deployment
+   cp .env.example .env
+   
+   # Create .env.local for frontend
+   cp frontend/.env.example frontend/.env.local
+   ```
+
+4. Edit the .env and .env.local files with your configuration:
+   - Add your wallet private key to .env
+   - Add your WalletConnect project ID to frontend/.env.local
+   - Set the deployed contract address in frontend/.env.local
+
+## Running the Project
+
+1. Compile smart contracts:
+   ```bash
+   npx hardhat compile
+   ```
+
+2. Deploy to ZetaChain testnet:
+   ```bash
+   npx hardhat run scripts/deploy.js --network zetachain_testnet
+   ```
+   Note: Copy the deployed contract address and update it in frontend/.env.local
+
+3. Start the frontend development server:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+4. Open http://localhost:3000 in your browser
+
+## Project Structure
+
+```
+zetalend-ai/
+├── contracts/             # Smart contracts
+│   ├── ZetaLend.sol       # Main lending protocol contract
+│   └── interfaces/        # Contract interfaces
+├── scripts/               # Deployment and test scripts
+├── frontend/              # Next.js frontend application
+│   ├── src/
+│   │   ├── app/           # Next.js app directory
+│   │   ├── components/    # React components
+│   │   ├── hooks/         # Custom React hooks
+│   │   └── utils/         # Utility functions
+│   └── public/            # Static assets
+└── ROADMAP.md             # Development roadmap
+```
 
    # Install frontend dependencies
    cd frontend

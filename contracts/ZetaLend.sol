@@ -68,14 +68,10 @@ contract ZetaLend is zContract, Pausable, Ownable {
         
         // For testing, allow borrowing native tokens
         if (amount > 0) {
-            // Since this is a test, we'll allow a small amount to be "borrowed" without an actual transfer
-            if (amount <= 10000) { // Very small amount for testing
-                loan.borrowedAmount = amount;
-                loan.borrowedToken = address(0);
-                emit Borrow(msg.sender, address(0), amount);
-            } else {
-                revert("ZetaLend: amount too large for testing");
-            }
+            // Allow any amount within the LTV limit for testing
+            loan.borrowedAmount = amount;
+            loan.borrowedToken = address(0);
+            emit Borrow(msg.sender, address(0), amount);
         }
     }
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useZetaLend } from '@/hooks/useZetaLend';
 import toast from 'react-hot-toast';
+import { SUPPORTED_CHAINS } from '@/utils/chains';
 
 export default function LendingInterface() {
   const { address, isConnected } = useAccount();
@@ -56,11 +57,27 @@ export default function LendingInterface() {
     if (!borrowAmount) return;
     
     try {
+      // Display a reminder about deposit requirement
+      if (selectedDepositChain !== SUPPORTED_CHAINS.zetachainAthens) {
+        toast('Remember: You need to deposit collateral on ZetaChain Athens before borrowing.', {
+          duration: 5000,
+          icon: '🔔',
+        });
+      }
+      
       await borrow(borrowAmount);
       toast.success('Borrow successful!');
       setBorrowAmount('');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to borrow');
+      // Check for the specific no-collateral error and show a helpful message
+      if (error.message?.includes('No collateral') || error.message?.includes('no collateral deposited')) {
+        toast.error('You must deposit collateral on ZetaChain Athens before borrowing.', {
+          duration: 6000,
+          icon: '⚠️',
+        });
+      } else {
+        toast.error(error.message || 'Failed to borrow');
+      }
     }
   };
 
