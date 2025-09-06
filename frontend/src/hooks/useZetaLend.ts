@@ -10,6 +10,7 @@ import {
 import { parseEther, parseUnits } from 'viem';
 import { ZETALEND_ADDRESS, ZETALEND_ABI } from '@/utils/contracts';
 import { SUPPORTED_CHAINS, CHAIN_NAMES } from '@/utils/chains';
+import { switchToNextRpc, retryWithBackoff } from '@/utils/rpc';
 import toast from 'react-hot-toast';
 
 // Define token type for type safety
@@ -128,20 +129,66 @@ export const useZetaLend = () => {
 
       // Switch to ZetaChain Athens testnet
       if (chain.id !== selectedDepositChain) {
-        await switchNetwork?.(selectedDepositChain);
+        toast.loading('Switching networks...', { id: 'switch-network' });
+        try {
+          await switchNetwork?.(selectedDepositChain);
+          
+          // Wait a moment after network switch to ensure stability
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          toast.dismiss('switch-network');
+          toast.success(`Switched to ${CHAIN_NAMES[selectedDepositChain as keyof typeof CHAIN_NAMES]} network`);
+        } catch (switchError: any) {
+          toast.dismiss('switch-network');
+          toast.error(`Failed to switch network: ${switchError.message}`);
+          throw new Error(`Network switch failed: ${switchError.message}`);
+        }
       }
 
       // Convert amount to Wei
       const value = parseEther(amount);
 
-      // Send transaction
-      const { hash } = await depositAsync({
-        args: [],
-        value,
-      });
+      toast.loading('Preparing deposit transaction...', { id: 'deposit-prep' });
 
-      toast.success('Deposit transaction sent!');
-      return hash;
+      try {
+        // Use our retry utility for more reliable contract calls
+        const result = await retryWithBackoff(
+          async () => {
+            try {
+              return await depositAsync({
+                args: [],
+                value,
+              });
+            } catch (txError: any) {
+              // If it's an RPC timeout, try switching to the next RPC
+              if (txError.message?.includes('timeout') || txError.message?.includes('took too long')) {
+                switchToNextRpc(selectedDepositChain);
+                // Throw again to trigger the retry
+                throw txError;
+              }
+              throw txError;
+            }
+          },
+          3, // max retries
+          1000 // base delay in ms
+        );
+
+        toast.dismiss('deposit-prep');
+        toast.success('Deposit transaction sent!');
+        return result.hash;
+      } catch (txError: any) {
+        toast.dismiss('deposit-prep');
+        
+        // Handle RPC-specific errors
+        if (txError.message?.includes('timeout') || txError.message?.includes('took too long')) {
+          console.error('RPC Timeout during deposit:', txError);
+          toast.error('Network connection timed out. Please try again.');
+          throw new Error('RPC timeout: The network connection timed out. Please try again.');
+        } else {
+          toast.error(txError.message || 'Failed to deposit');
+          throw txError;
+        }
+      }
     } catch (error: any) {
       console.error('Deposit error:', error);
       toast.error(error.message || 'Failed to deposit');
@@ -151,6 +198,29 @@ export const useZetaLend = () => {
     }
   }, [walletClient, chain, switchNetwork, depositAsync, selectedDepositChain]);
 
+  const refreshNetworkConnection = useCallback(async () => {
+    // Try switching to a different network and back
+    const tempNetwork = selectedBorrowChain === SUPPORTED_CHAINS.ethereumSepolia 
+      ? SUPPORTED_CHAINS.zetachainAthens 
+      : SUPPORTED_CHAINS.ethereumSepolia;
+    
+    toast.loading('Attempting to refresh connection...', { id: 'refresh-conn' });
+    
+    try {
+      await switchNetwork?.(tempNetwork);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await switchNetwork?.(selectedBorrowChain);
+      
+      toast.dismiss('refresh-conn');
+      toast.success('Connection refreshed. Please try again.');
+      return true;
+    } catch (switchError) {
+      toast.dismiss('refresh-conn');
+      toast.error('Failed to refresh connection.');
+      return false;
+    }
+  }, [switchNetwork, selectedBorrowChain]);
+  
   const borrow = useCallback(async (amount: string) => {
     if (!walletClient) throw new Error('Wallet not connected');
     if (!chain) throw new Error('Network not connected');
@@ -312,9 +382,26 @@ export const useZetaLend = () => {
           const smallTestAmount = parseUnits('0.0001', selectedBorrowToken.decimals);
           console.log("Using small test amount instead:", smallTestAmount.toString());
           
-          const result = await borrowAsync({
-            args: [smallTestAmount],
-          });
+          // Use our retry utility for more reliable contract calls
+          const result = await retryWithBackoff(
+            async () => {
+              try {
+                return await borrowAsync({
+                  args: [smallTestAmount],
+                });
+              } catch (txError: any) {
+                // If it's an RPC timeout, try switching to the next RPC
+                if (txError.message?.includes('timeout') || txError.message?.includes('took too long')) {
+                  switchToNextRpc(selectedBorrowChain);
+                  // Throw again to trigger the retry
+                  throw txError;
+                }
+                throw txError;
+              }
+            },
+            3, // max retries
+            1000 // base delay in ms
+          );
           
           console.log("Borrow transaction sent with hash:", result.hash);
           toast.dismiss('borrow-prep');
@@ -338,33 +425,45 @@ export const useZetaLend = () => {
         // Handle different types of RPC errors
         if (innerError.message?.includes('timeout') || innerError.message?.includes('took too long')) {
           console.error('RPC Timeout error:', innerError);
-          toast.error('RPC endpoint timed out. Please try again in a moment.');
-          throw new Error('RPC timeout: The request to the blockchain network timed out.');
+          
+          // Try switching to the next RPC URL
+          const switched = switchToNextRpc(selectedBorrowChain);
+          
+          if (switched) {
+            toast.loading('Switching to alternative RPC endpoint...', { id: 'rpc-switch' });
+            
+            // Wait a moment to let the switch take effect
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Try calling the function again
+            toast.dismiss('rpc-switch');
+            toast.success('Switched to alternative RPC. Please try again.');
+            throw new Error('RPC timeout: Switched to alternative endpoint. Please try again.');
+          } else {
+            // If we've tried all RPC endpoints, suggest a network refresh
+            toast.error('All RPC endpoints failed. Trying to refresh the network connection...');
+            
+            // Try refreshing the network connection
+            await refreshNetworkConnection();
+            throw new Error('RPC timeout: All endpoints failed. Please wait and try again.');
+          }
         } else if (innerError.message?.includes('401') || innerError.message?.includes('Unauthorized')) {
           console.error('RPC Authorization error:', innerError);
-          toast.error('RPC endpoint authorization failed. Please try again with a different wallet.');
           
-          // Try switching network and back to get a different RPC endpoint
-          toast.loading('Attempting to refresh connection...', { id: 'refresh-conn' });
+          // Try switching to the next RPC URL
+          const switched = switchToNextRpc(selectedBorrowChain);
           
-          try {
-            // Switch to a different network and then back to trigger a new RPC connection
-            const tempNetwork = selectedBorrowChain === SUPPORTED_CHAINS.ethereumSepolia 
-              ? SUPPORTED_CHAINS.zetachainAthens 
-              : SUPPORTED_CHAINS.ethereumSepolia;
-              
-            await switchNetwork?.(tempNetwork);
+          if (switched) {
+            toast.loading('Switching to alternative RPC endpoint...', { id: 'rpc-switch' });
             await new Promise(resolve => setTimeout(resolve, 1000));
-            await switchNetwork?.(selectedBorrowChain);
-            
-            toast.dismiss('refresh-conn');
-            toast.success('Connection refreshed. Please try again.');
-          } catch (switchError) {
-            toast.dismiss('refresh-conn');
-            toast.error('Failed to refresh connection.');
+            toast.dismiss('rpc-switch');
+            toast.success('Switched to alternative RPC. Please try again.');
+          } else {
+            // If we've tried all RPC endpoints, refresh the network connection
+            await refreshNetworkConnection();
           }
           
-          throw new Error('RPC authorization failed. The endpoint returned a 401 Unauthorized error.');
+          throw new Error('RPC authorization failed. Please try again.');
         } else if (innerError.message?.includes('execution reverted') || innerError.message?.includes('reverted')) {
           // Handle contract reversion errors
           console.error('Contract execution reverted:', innerError);
@@ -396,7 +495,7 @@ export const useZetaLend = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [walletClient, chain, switchNetwork, borrowAsync]);
+  }, [walletClient, chain, switchNetwork, borrowAsync, selectedBorrowChain, refreshNetworkConnection]);
 
   return {
     deposit,

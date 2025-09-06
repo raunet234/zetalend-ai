@@ -49,7 +49,25 @@ export default function LendingInterface() {
       toast.success('Deposit successful!');
       setDepositAmount('');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to deposit');
+      console.error("Deposit error:", error);
+      
+      if (error.message?.includes('RPC timeout') || error.message?.includes('timed out') || error.message?.includes('network connection')) {
+        // For RPC timeouts, show a special message with a retry button
+        toast.error(
+          <div className="flex flex-col gap-2">
+            <span>Network connection timed out.</span>
+            <button 
+              className="bg-blue-600 text-white text-xs py-1 px-2 rounded-md hover:bg-blue-500"
+              onClick={() => handleDeposit()}
+            >
+              Retry with new RPC endpoint
+            </button>
+          </div>,
+          { duration: 10000 }
+        );
+      } else {
+        toast.error(error.message || 'Failed to deposit');
+      }
     }
   };
 
@@ -69,12 +87,28 @@ export default function LendingInterface() {
       toast.success('Borrow successful!');
       setBorrowAmount('');
     } catch (error: any) {
-      // Check for the specific no-collateral error and show a helpful message
+      console.error("Borrow error:", error);
+      
+      // Check for specific error types
       if (error.message?.includes('No collateral') || error.message?.includes('no collateral deposited')) {
         toast.error('You must deposit collateral on ZetaChain Athens before borrowing.', {
           duration: 6000,
           icon: '⚠️',
         });
+      } else if (error.message?.includes('RPC timeout') || error.message?.includes('timed out') || error.message?.includes('network connection')) {
+        // For RPC timeouts, show a special message with a retry button
+        toast.error(
+          <div className="flex flex-col gap-2">
+            <span>Network connection timed out.</span>
+            <button 
+              className="bg-blue-600 text-white text-xs py-1 px-2 rounded-md hover:bg-blue-500"
+              onClick={() => handleBorrow()}
+            >
+              Retry with new RPC endpoint
+            </button>
+          </div>,
+          { duration: 10000 }
+        );
       } else {
         toast.error(error.message || 'Failed to borrow');
       }

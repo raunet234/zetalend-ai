@@ -19,8 +19,20 @@ const zetaChainTestnet = {
     symbol: 'ZETA',
   },
   rpcUrls: {
-    public: { http: ['https://zetachain-athens-evm.blockpi.network/v1/rpc/public'] },
-    default: { http: ['https://zetachain-athens-evm.blockpi.network/v1/rpc/public'] },
+    public: { 
+      http: [
+        'https://zetachain-athens-evm.blockpi.network/v1/rpc/public',
+        'https://zetachain-athens-evm.public.blastapi.io',
+        'https://zetachain-athens-evm-rpc.publicnode.com'
+      ] 
+    },
+    default: { 
+      http: [
+        'https://zetachain-athens-evm.blockpi.network/v1/rpc/public',
+        'https://zetachain-athens-evm.public.blastapi.io',
+        'https://zetachain-athens-evm-rpc.publicnode.com'
+      ] 
+    },
   },
   blockExplorers: {
     default: { name: 'ZetaChain Explorer', url: 'https://explorer.zetachain.com' },
@@ -31,7 +43,13 @@ const zetaChainTestnet = {
 
 const { chains, publicClient } = configureChains(
   [zetaChainTestnet, mainnet, sepolia, goerli, bsc, bscTestnet],
-  [publicProvider()]
+  [publicProvider()],
+  {
+    pollingInterval: 4000, // Poll every 4 seconds
+    stallTimeout: 5000,    // Consider stalled after 5 seconds
+    retryCount: 3,         // Retry 3 times
+    retryDelay: 1000       // Wait 1 second between retries
+  }
 );
 
 const { connectors } = getDefaultWallets({
